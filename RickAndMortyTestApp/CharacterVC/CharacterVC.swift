@@ -14,7 +14,7 @@ class CharacterVC: UIViewController {
     var character: Result
     var index: Int = 0
     var episode = [Episode]()
-
+    let myGroup = DispatchGroup()
     init(character:Result,index:Int) {
         self.character = character
         self.index = index
@@ -24,16 +24,19 @@ class CharacterVC: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         self.view = characterView
         addTargets()
         getCharacterView()
         getEpisodes()
-        self.characterView.table.delegate = self
-        self.characterView.table.dataSource = self
+        myGroup.notify(queue: DispatchQueue.main, work: DispatchWorkItem(block: {
+            self.characterView.table.delegate = self
+            self.characterView.table.dataSource = self
+        })
+        )
+         
+
     }
     
     func addTargets() {
@@ -45,12 +48,14 @@ class CharacterVC: UIViewController {
     }
  
     func getEpisodes() {
-                for item in self.character.episode {
-                               NetWorkService.getEpisode(fetchUrl: item) { episodes in
-                                   self.episode.append(episodes)
-                }
+        for item in self.character.episode {
+            self.myGroup.enter()
+            NetWorkService.getEpisode(fetchUrl: item) { episodes in
+                self.episode.append(episodes)
+                self.myGroup.leave()
             }
         }
+     }
  
     func getCharacterView() {
         characterView.characterName.text = character.name
@@ -84,6 +89,8 @@ extension CharacterVC: UITableViewDataSource,UITableViewDelegate {
             cell.episodeName.text = self.episode[indexPath.row].name
             cell.episodeSeries.text = self.episode[indexPath.row].episode.replacingOccurrences(of: "E", with: " Episode: ").replacingOccurrences(of: "S", with: "Season: ")
             cell.episodeDate.text = self.episode[indexPath.row].air_date
+        
+           
         cell.backgroundColor = UIColor(named: "bgColor")
         return cell
     }
